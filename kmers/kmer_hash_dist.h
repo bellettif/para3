@@ -27,7 +27,7 @@ int64_t hashkmer(char *seq)
 }
 
 /* Looks up a kmer in the hash table and returns a pointer to that entry */
-shared kmer_t* lookup_kmer(shared bucket_t *buckets, shared kmer_t *heap, const unsigned char *kmer)
+shared kmer_t* lookup_kmer(shared [N] bucket_t *buckets, shared [N] kmer_t *heap, const unsigned char *kmer)
 {
 
    char packedKmer[KMER_PACKED_LENGTH];
@@ -55,7 +55,7 @@ shared kmer_t* lookup_kmer(shared bucket_t *buckets, shared kmer_t *heap, const 
 }
 
 /* Adds a kmer and its extensions in the hash table (note that a memory heap should be preallocated. ) */
-int add_kmer(shared bucket_t *buckets, shared kmer_t *heap, int pos, const unsigned char *kmer, char left_ext, char right_ext)
+int add_kmer(shared [N] bucket_t *buckets, shared [N] kmer_t *heap, int pos, const unsigned char *kmer, char left_ext, char right_ext)
 {
    /* Pack a k-mer sequence appropriately */
    char packedKmer[KMER_PACKED_LENGTH];

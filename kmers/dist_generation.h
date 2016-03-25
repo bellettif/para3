@@ -9,7 +9,7 @@
 #include <string.h>
 
 #define HASH_SIZE 65636
-#define N [16]
+#define N 8
 
 #ifndef MAXIMUM_CONTIG_SIZE
 #define MAXIMUM_CONTIG_SIZE 100000

@@ -9,12 +9,13 @@
 #include "packingDNAseq.h"
 #include "kmer_hash_dist.h"
 
-shared [16] kmer_t heap [THREADS * 1024];
-shared [16] bucket_t buckets [THREADS * 1024];
-shared [16] kmer_t starts [THREADS * 1024]; 
-
+shared [N] kmer_t heap [MAXIMUM_CONTIG_SIZE * THREADS];
+shared [N] bucket_t buckets [HASH_SIZE * THREADS];
+shared [N] kmer_t starts [MAXIMUM_CONTIG_SIZE * THREADS]; 
 shared int pos = 0;
 shared int n_starts = 0;
+shared kmer_t *lookup;
+
 
 int main(int argc, char *argv[]){
 
@@ -28,18 +29,19 @@ int main(int argc, char *argv[]){
 	///////////////////////////////////////////
 	// Your code for input file reading here //
 	///////////////////////////////////////////         
-	if(MYTHREAD == 0){
 
 	time_t start, end;
-   	double constrTime, traversalTime;
    	char cur_contig[MAXIMUM_CONTIG_SIZE], unpackedKmer[KMER_LENGTH+1], left_ext, right_ext, *input_UFX_name;
    	int64_t posInContig, contigID = 0, totBases = 0, ptr = 0, nKmers, cur_chars_read, total_chars_to_read;
    	unpackedKmer[KMER_LENGTH] = '\0';
    	kmer_t *cur_kmer_ptr;
    	start_kmer_t *startKmersList = NULL, *curStartNode;
    	unsigned char *working_buffer;
-   	FILE *inputFile, *serialOutputFile;
+   	FILE *inputFile;
    	/* Read the input file name */
+
+
+	if(MYTHREAD == 0){
    	input_UFX_name = argv[1];
 	nKmers = getNumKmersInUFX(input_UFX_name);
 	total_chars_to_read = nKmers * LINE_SIZE;
@@ -78,6 +80,45 @@ int main(int argc, char *argv[]){
 	///////////////////////////////////////////
 	// Your code for graph construction here //
 	///////////////////////////////////////////
+	
+	char filename[80];	
+ 	FILE *serialOutputFile;
+	sprintf(filename, "serial%d.out", MYTHREAD);
+
+	serialOutputFile = fopen(filename, "w");
+	for(int i = n_starts - 1; i >= 0; --i){
+		
+		if(i % THREADS == MYTHREAD){
+			kmer_t current_start;
+			upc_memget_nb(&current_start, starts + i, sizeof(kmer_t));
+			cur_kmer_ptr = &current_start;
+			
+			unpackSequence((unsigned char*) cur_kmer_ptr->kmer,  (unsigned char*) unpackedKmer, KMER_LENGTH);
+     			 /* Initialize current contig with the seed content */
+      			memcpy(cur_contig ,unpackedKmer, KMER_LENGTH * sizeof(char));
+      			posInContig = KMER_LENGTH;
+      			right_ext = cur_kmer_ptr->r_ext;
+
+      			/* Keep adding bases while not finding a terminal node */
+      			while (right_ext != 'F') {
+        			cur_contig[posInContig] = right_ext;
+         			posInContig++;
+         			/* At position cur_contig[posInContig-KMER_LENGTH] starts the last k-mer in the current contig */
+         			lookup = lookup_kmer(buckets, heap, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
+         			upc_memget_nb(cur_kmer_ptr, lookup, sizeof(kmer_t));
+				right_ext = cur_kmer_ptr->r_ext;
+			}
+
+      		/* Print the contig since we have found the corresponding terminal node */
+      		cur_contig[posInContig] = '\0';
+      		fprintf(serialOutputFile,"%s\n", cur_contig);
+      		contigID++;
+      		totBases += strlen(cur_contig);
+ 
+		}
+
+	}
+
 	upc_barrier;
 	constrTime += gettime();
 
