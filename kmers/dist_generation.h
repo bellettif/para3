@@ -11,6 +11,8 @@
 #define HASH_SIZE 65636
 #define N 8
 
+#define HEAP_SIZE 1000000
+
 #ifndef MAXIMUM_CONTIG_SIZE
 #define MAXIMUM_CONTIG_SIZE 100000
 #endif

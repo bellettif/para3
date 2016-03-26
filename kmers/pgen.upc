@@ -9,9 +9,9 @@
 #include "packingDNAseq.h"
 #include "kmer_hash_dist.h"
 
-shared [N] kmer_t heap [MAXIMUM_CONTIG_SIZE * THREADS];
+shared [N] kmer_t heap [HEAP_SIZE * THREADS];
 shared [N] bucket_t buckets [HASH_SIZE * THREADS];
-shared [N] kmer_t starts [MAXIMUM_CONTIG_SIZE * THREADS]; 
+shared [N] kmer_t starts [HEAP_SIZE * THREADS]; 
 shared int pos = 0;
 shared int n_starts = 0;
 shared kmer_t *lookup;
@@ -40,40 +40,56 @@ int main(int argc, char *argv[]){
    	FILE *inputFile;
    	/* Read the input file name */
 
-
 	if(MYTHREAD == 0){
-   	input_UFX_name = argv[1];
+	input_UFX_name = argv[1];
+
 	nKmers = getNumKmersInUFX(input_UFX_name);
+
+	/* Read the kmers from the input file and store them in the working_buffer */
 	total_chars_to_read = nKmers * LINE_SIZE;
-	inputFile = fopen(input_UFX_name, "r");
+  	 working_buffer = (unsigned char*) malloc(total_chars_to_read * sizeof(unsigned char));
+   	inputFile = fopen(input_UFX_name, "r");
    	cur_chars_read = fread(working_buffer, sizeof(unsigned char),total_chars_to_read , inputFile);
    	fclose(inputFile);
 
-	while (ptr < cur_chars_read) {
-	/* working_buffer[ptr] is the start of the current k-mer                */
-	/* so current left extension is at working_buffer[ptr+KMER_LENGTH+1]    */
-	/* and current right extension is at working_buffer[ptr+KMER_LENGTH+2]  */
+   /* Process the working_buffer and store the k-mers in the hash table */
+   /* Expected format: KMER LR ,i.e. first k characters that represent the kmer, then a tab and then two chatacers, one for the left (backward) extension and one for the right (forward) extension */
 
-	left_ext = (char) working_buffer[ptr+KMER_LENGTH+1];
-	right_ext = (char) working_buffer[ptr+KMER_LENGTH+2];
+   	while (ptr < cur_chars_read) {
+      		/* working_buffer[ptr] is the start of the current k-mer                */
+      		/* so current left extension is at working_buffer[ptr+KMER_LENGTH+1]    */
+      		/* and current right extension is at working_buffer[ptr+KMER_LENGTH+2]  */
 
+      left_ext = (char) working_buffer[ptr+KMER_LENGTH+1];
+      right_ext = (char) working_buffer[ptr+KMER_LENGTH+2];
+
+      /* Add k-mer to hash table */
+	//add_kmer(hashtable, &memory_heap, &working_buffer[ptr], left_ext, right_ext);
 	add_kmer(buckets, heap, pos, &working_buffer[ptr], left_ext, right_ext);
-	
-	if (left_ext == 'F') {
-        	kmer_t temp;
-        	upc_memget_nb(&temp, heap + pos, sizeof(kmer_t));	
-		upc_memput_nb(starts + n_starts, &temp, sizeof(kmer_t));
-        	++n_starts;
-	}
-	
-	++pos;
 
-	}
+      /* Create also a list with the "start" kmers: nodes with F as left (backward) extension */
+      if (left_ext == 'F') {
+	//kmer_t temp;
+        //upc_memget_nb(&temp, heap + pos, sizeof(kmer_t));	
+	//upc_memput_nb(starts + n_starts, &temp, sizeof(kmer_t));
+	 ++n_starts;
+         //addKmerToStartList(&memory_heap, &startKmersList);
+      }
+
+      /* Move to the next k-mer in the input working_buffer */
+      ptr += LINE_SIZE;
+      ++pos;
+   }	
+
+	
+	printf("Initialized hash table with %d elements and got %d start positions\n", pos, n_starts);
 
 	}
 
 	upc_barrier;
 	inputTime += gettime();
+
+	exit(0);
 
 	/** Graph construction **/
 	constrTime -= gettime();

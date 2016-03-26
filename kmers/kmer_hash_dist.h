@@ -62,23 +62,24 @@ int add_kmer(shared [N] bucket_t *buckets, shared [N] kmer_t *heap, int pos, con
    packSequence(kmer, (unsigned char*) packedKmer, KMER_LENGTH);
    int64_t hashval = hashkmer((char*) packedKmer);
 
-   /* Add the contents to the appropriate kmer struct in the heap */
+   /* Add the contents to the appropriate kmer struct in the heap */   
    kmer_t to_mod;
    upc_memget_nb(&to_mod, heap + pos, sizeof(kmer_t));
 
-   memcpy(to_mod.kmer, packedKmer, KMER_PACKED_LENGTH * sizeof(char));
-   to_mod.l_ext = left_ext;
-   to_mod.r_ext = right_ext;
+   //memcpy(to_mod.kmer, packedKmer, KMER_PACKED_LENGTH * sizeof(char));
+   //to_mod.l_ext = left_ext;
+   //to_mod.r_ext = right_ext;
    
-   bucket_t target_bucket;
-   upc_memget_nb(&target_bucket, buckets + hashval, sizeof(bucket_t));
+   //bucket_t target_bucket;
+   //upc_memget_nb(&target_bucket, buckets + hashval, sizeof(bucket_t));
+   
    /* Fix the next pointer to point to the appropriate kmer struct */
-   to_mod.next = target_bucket.head;
-   upc_memput_nb(heap + pos, &to_mod, sizeof(kmer_t));
+   //to_mod.next = target_bucket.head;
+   //upc_memput_nb(heap + pos, &to_mod, sizeof(kmer_t));
 
    /* Fix the head pointer of the appropriate bucket to point to the current kmer */
-   target_bucket.head = pos;
-   upc_memput_nb(buckets + hashval, &target_bucket, sizeof(bucket_t));   
+   //target_bucket.head = pos;
+   //upc_memput_nb(buckets + hashval, &target_bucket, sizeof(bucket_t));   
 
    return 0;
 }
