@@ -13,7 +13,7 @@
 
 shared kmer_t heap [HEAP_SIZE * THREADS];
 shared bucket_t buckets [HASH_SIZE * THREADS];
-shared kmer_t starts [HEAP_SIZE * THREADS];
+shared int starts [HEAP_SIZE * THREADS];
 shared int pos = 0;
 shared int n_starts = 0;
 shared kmer_t *lookup;
@@ -41,6 +41,8 @@ int main(int argc, char *argv[]){
     unsigned char *working_buffer;
     FILE *inputFile;
     /* Read the input file name */
+
+    init_LookupTable();
 
     if(MYTHREAD == 0){
         input_UFX_name = argv[1];
@@ -89,10 +91,7 @@ int main(int argc, char *argv[]){
 
             /* Create also a list with the "start" kmers: nodes with F as left (backward) extension */
             if (left_ext == 'F') {
-                kmer_t temp;
-                upc_memget_nb(&temp, heap + pos, sizeof(kmer_t));
-                upc_memput_nb(starts + n_starts, &temp, sizeof(kmer_t));
-                ++n_starts;
+                starts[n_starts++] = pos;
                 //addKmerToStartList(&heap, &startKmersList);
             }
 
@@ -108,8 +107,6 @@ int main(int argc, char *argv[]){
     upc_barrier;
     inputTime += gettime();
 
-    exit(0);
-
     /** Graph construction **/
     constrTime -= gettime();
     ///////////////////////////////////////////
@@ -121,18 +118,19 @@ int main(int argc, char *argv[]){
     sprintf(filename, "serial%d.out", MYTHREAD);
 
     serialOutputFile = fopen(filename, "w");
+    kmer_t current_start;
     for(int i = n_starts - 1; i >= 0; --i){
 
         if(i % THREADS == MYTHREAD){
-            kmer_t current_start;
-            upc_memget_nb(&current_start, starts + i, sizeof(kmer_t));
+            upc_memget_nb(&current_start, heap + starts[i], sizeof(kmer_t));
             cur_kmer_ptr = &current_start;
+            unpackSequence((unsigned char*) current_start.kmer,  (unsigned char*) unpackedKmer, KMER_LENGTH);
+            //printf("Looking up %c %s %s\n", right_ext, current_start.kmer, unpackedKmer);
 
-            unpackSequence((unsigned char*) cur_kmer_ptr->kmer,  (unsigned char*) unpackedKmer, KMER_LENGTH);
             /* Initialize current contig with the seed content */
             memcpy(cur_contig ,unpackedKmer, KMER_LENGTH * sizeof(char));
             posInContig = KMER_LENGTH;
-            right_ext = cur_kmer_ptr->r_ext;
+            right_ext = current_start.r_ext;
 
             /* Keep adding bases while not finding a terminal node */
             while (right_ext != 'F') {
@@ -142,8 +140,6 @@ int main(int argc, char *argv[]){
                 lookup = lookup_kmer(buckets, heap, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
                 upc_memget_nb(cur_kmer_ptr, lookup, sizeof(kmer_t));
                 right_ext = cur_kmer_ptr->r_ext;
-
-                break;
             }
 
             /* Print the contig since we have found the corresponding terminal node */

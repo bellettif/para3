@@ -81,6 +81,8 @@ int main(int argc, char **argv) {
       /* Need to unpack the seed first */
       cur_kmer_ptr = curStartNode->kmerPtr;
       unpackSequence((unsigned char*) cur_kmer_ptr->kmer,  (unsigned char*) unpackedKmer, KMER_LENGTH);
+      //printf("Looking up %c %s %s\n", right_ext, cur_kmer_ptr->kmer, unpackedKmer);
+
       /* Initialize current contig with the seed content */
       memcpy(cur_contig ,unpackedKmer, KMER_LENGTH * sizeof(char));
       posInContig = KMER_LENGTH;
@@ -93,13 +95,12 @@ int main(int argc, char **argv) {
          /* At position cur_contig[posInContig-KMER_LENGTH] starts the last k-mer in the current contig */
          cur_kmer_ptr = lookup_kmer(hashtable, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
          right_ext = cur_kmer_ptr->r_ext;
-
-         break;
       }
 
       /* Print the contig since we have found the corresponding terminal node */
       cur_contig[posInContig] = '\0';
       fprintf(serialOutputFile,"%s\n", cur_contig);
+
       contigID++;
       totBases += strlen(cur_contig);
       /* Move to the next start node in the list */
