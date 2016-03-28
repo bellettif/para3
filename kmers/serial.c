@@ -66,6 +66,7 @@ int main(int argc, char **argv) {
    }
 
    end = clock();
+
    constrTime = 1.0 * (end-start) / CLOCKS_PER_SEC;
 
    /* ============== GRAPH TRAVERSAL ============== */
@@ -92,6 +93,8 @@ int main(int argc, char **argv) {
          /* At position cur_contig[posInContig-KMER_LENGTH] starts the last k-mer in the current contig */
          cur_kmer_ptr = lookup_kmer(hashtable, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
          right_ext = cur_kmer_ptr->r_ext;
+
+         break;
       }
 
       /* Print the contig since we have found the corresponding terminal node */

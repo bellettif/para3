@@ -8,10 +8,10 @@
 #include <math.h>
 #include <string.h>
 
-#define HASH_SIZE 65636
+#define HASH_SIZE 4514197
 #define N 8
 
-#define HEAP_SIZE 1000000
+#define HEAP_SIZE 16777216
 
 #ifndef MAXIMUM_CONTIG_SIZE
 #define MAXIMUM_CONTIG_SIZE 100000

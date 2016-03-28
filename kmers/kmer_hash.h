@@ -64,10 +64,14 @@ kmer_t* lookup_kmer(hash_table_t *hashtable, const unsigned char *kmer)
    result = cur_bucket.head;
    
    for (; result!=NULL; ) {
+
+      //printf("Kmer= %s\n", result->kmer);
+
       if ( memcmp(packedKmer, result->kmer, KMER_PACKED_LENGTH * sizeof(char)) == 0 ) {
          return result;
       }
       result = result->next;
+
    }
    return NULL;
 }
