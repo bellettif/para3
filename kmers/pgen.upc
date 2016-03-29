@@ -83,6 +83,16 @@ int main(int argc, char *argv[]){
             char packedKmer[KMER_PACKED_LENGTH];
             packSequence(&working_buffer[ptr], (unsigned char*) packedKmer, KMER_LENGTH);
 
+            printf("Value added to shared hash table: ");
+            for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
+                printf("%c", packedKmer[i]);
+            }
+
+            printf("Value looked up from shared hash table: ");
+            for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
+                printf("%c", temp.kmer[i]);
+            }
+
             for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
                 assert(packedKmer[i] == temp.kmer[i]);
             }
