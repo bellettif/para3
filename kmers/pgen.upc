@@ -115,7 +115,7 @@ int main(int argc, char *argv[]){
 
     char filename[80];
     FILE *serialOutputFile;
-    sprintf(filename, "serial%d.out", MYTHREAD);
+    sprintf(filename, "pgen_%d.out", MYTHREAD);
 
     serialOutputFile = fopen(filename, "w");
     kmer_t current_start;

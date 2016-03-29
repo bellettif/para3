@@ -1,0 +1,25 @@
+#!/bin/bash -l 
+#SBATCH -p debug
+#SBATCH -N 4
+#SBATCH -t 00:10:00 
+#SBATCH -J test-multi-HW3
+#SBATCH -o test-multi.%j.out
+#SBATCH -e test-multi.%j.err
+
+
+# Specify path to your input file here
+INPUT=test
+
+cd ${PWD}
+upcrun -n 16 -shared-heap=1G ./pgen ${INPUT}
+
+#cd ${PWD}
+#for P in `seq 1 6`; do
+#	upcrun -n $P -shared-heap=1G ./pgen ${INPUT}
+#done
+#for P in `seq 7 12`; do
+#	upcrun -n $P -shared-heap=1G ./pgen ${INPUT}
+#done
+#for P in `seq 13 24`; do
+#	upcrun -n $P -shared-heap=1G ./pgen ${INPUT}
+#done
