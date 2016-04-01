@@ -1,2 +1,2 @@
-UPCR_TLD_DEFINE(lookup, 16, 8)
+UPCR_TLD_DEFINE(lookup, 8, 8)
 UPCR_TLD_DEFINE(upcrt_forall_control, 4, 4)

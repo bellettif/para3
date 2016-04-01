@@ -77,21 +77,25 @@ int main(int argc, char *argv[]){
 #ifdef CHECK_TABLE
 
             lookup = lookup_kmer(buckets, heap, &working_buffer[ptr]);
-            kmer_t temp;
-            upc_memget_nb(&temp, lookup, sizeof(kmer_t));
+            kmer_t temp = *lookup;
+            //upc_memget_nb(&temp, lookup, sizeof(kmer_t));
 
             char packedKmer[KMER_PACKED_LENGTH];
             packSequence(&working_buffer[ptr], (unsigned char*) packedKmer, KMER_LENGTH);
 
+            /*
             printf("Value added to shared hash table: ");
             for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
                 printf("%c", packedKmer[i]);
             }
+            printf(" ");
 
             printf("Value looked up from shared hash table: ");
             for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
                 printf("%c", temp.kmer[i]);
             }
+            printf("\n");
+            */
 
             for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
                 assert(packedKmer[i] == temp.kmer[i]);
@@ -115,6 +119,7 @@ int main(int argc, char *argv[]){
     }
 
     upc_barrier;
+
     inputTime += gettime();
 
     /** Graph construction **/
@@ -132,7 +137,7 @@ int main(int argc, char *argv[]){
     for(int i = n_starts - 1; i >= 0; --i){
 
         if(i % THREADS == MYTHREAD){
-            upc_memget_nb(&current_start, heap + starts[i], sizeof(kmer_t));
+            current_start = heap[starts[i]];
             cur_kmer_ptr = &current_start;
             unpackSequence((unsigned char*) current_start.kmer,  (unsigned char*) unpackedKmer, KMER_LENGTH);
             //printf("Looking up %c %s %s\n", right_ext, current_start.kmer, unpackedKmer);
@@ -148,7 +153,8 @@ int main(int argc, char *argv[]){
                 posInContig++;
                 /* At position cur_contig[posInContig-KMER_LENGTH] starts the last k-mer in the current contig */
                 lookup = lookup_kmer(buckets, heap, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
-                upc_memget_nb(cur_kmer_ptr, lookup, sizeof(kmer_t));
+                //upc_memget_nb(cur_kmer_ptr, lookup, sizeof(kmer_t));
+                *(cur_kmer_ptr) = *lookup;
                 right_ext = cur_kmer_ptr->r_ext;
             }
 

@@ -28,8 +28,8 @@ global.tld:  pgen_obj.tld
 	echo '/* this comment avoids empty file warnings */' >>global.tld
 
 pgen_obj.o: pgen_obj.c global.tld
-	/usr/bin/gmake --no-print-directory -f /global/common/edison/ftg/upc/2.22.0/PrgEnv-gnu-5.2.56-5.2.0/runtime/inst/opt/include/upcc.mak UPCR_HOME=/global/common/edison/ftg/upc/2.22.0/PrgEnv-gnu-5.2.56-5.2.0/runtime/inst/opt \
+	/usr/bin/make --no-print-directory -f /Users/cusgadmin/berkeley_upc-2.22.0/build/opt/upcc.mak UPCR_HOME=/Users/cusgadmin/berkeley_upc-2.22.0/build/opt \
 	EXTRA_CFLAGS=" -O3 "    \
-	EXTRA_CPPFLAGS="-D__BERKELEY_UPC_RUNTIME__=1 -D__BERKELEY_UPC_RUNTIME_RELEASE__=2 -D__BERKELEY_UPC_RUNTIME_RELEASE_MINOR__=22 -D__BERKELEY_UPC_RUNTIME_RELEASE_PATCHLEVEL__=0 -D__BERKELEY_UPC_ARIES_CONDUIT__=1 -DKMER_LENGTH=19 -DKMER_PACKED_LENGTH=5 -D__UPC_COLLECTIVE__=1 -D__UPC_PUPC__=1 -D__UPC_IO__=2 -D__UPC_TICK__=1 -D__UPC_CASTABLE__=1 -D__UPC_NB__=1 -D__BERKELEY_UPC_PSHM__=1 -D__BERKELEY_UPC_PTHREADS__=1 -D__BERKELEY_UPC__=2 -D__BERKELEY_UPC_MINOR__=22 -D__BERKELEY_UPC_PATCHLEVEL__=0 -DUPC_MAX_BLOCK_SIZE=2147483647 -D__UPC__=1 -D__UPC_VERSION__=201311L -D__UPC_DYNAMIC_THREADS__=1 -DUPCRI_USING_TLD -I'/global/u1/b/belletti/para3/kmers' -I'/global/u1/b/belletti/para3/kmers/pgen_pthread-link'" \
-	UPCR_CONDUIT=aries UPCR_PARSEQ=par '$@'
+	EXTRA_CPPFLAGS="-D__BERKELEY_UPC_RUNTIME__=1 -D__BERKELEY_UPC_RUNTIME_RELEASE__=2 -D__BERKELEY_UPC_RUNTIME_RELEASE_MINOR__=22 -D__BERKELEY_UPC_RUNTIME_RELEASE_PATCHLEVEL__=0 -D__BERKELEY_UPC_SMP_CONDUIT__=1 -DKMER_LENGTH=19 -DKMER_PACKED_LENGTH=5 -D__UPC_COLLECTIVE__=1 -D__UPC_PUPC__=1 -D__UPC_IO__=2 -D__UPC_TICK__=1 -D__UPC_CASTABLE__=1 -D__UPC_NB__=1 -D__BERKELEY_UPC_PTHREADS__=1 -D__BERKELEY_UPC__=2 -D__BERKELEY_UPC_MINOR__=22 -D__BERKELEY_UPC_PATCHLEVEL__=0 -DUPC_MAX_BLOCK_SIZE=1048576 -D__UPC__=1 -D__UPC_VERSION__=201311L -D__UPC_DYNAMIC_THREADS__=1 -DUPCRI_USING_TLD -I'/Users/cusgadmin/para3/kmers' -I'/Users/cusgadmin/para3/kmers/pgen_pthread-link'" \
+	UPCR_CONDUIT=smp UPCR_PARSEQ=par '$@'
 
