@@ -18,7 +18,6 @@ shared int pos = 0;
 shared int n_starts = 0;
 shared kmer_t *lookup;
 
-
 int main(int argc, char *argv[]){
 
     /** Declarations **/
@@ -44,36 +43,43 @@ int main(int argc, char *argv[]){
 
     init_LookupTable();
 
-    if(MYTHREAD == 0){
-        input_UFX_name = argv[1];
 
-        nKmers = getNumKmersInUFX(input_UFX_name);
+    input_UFX_name = argv[1];
 
-        /* Read the kmers from the input file and store them in the working_buffer */
-        total_chars_to_read = nKmers * LINE_SIZE;
-        working_buffer = (unsigned char*) malloc(total_chars_to_read * sizeof(unsigned char));
-        inputFile = fopen(input_UFX_name, "r");
-        cur_chars_read = fread(working_buffer, sizeof(unsigned char),total_chars_to_read , inputFile);
-        fclose(inputFile);
+    nKmers = getNumKmersInUFX(input_UFX_name);
 
-        /* Process the working_buffer and store the k-mers in the hash table */
-        /* Expected format: KMER LR ,i.e. first k characters that represent the kmer, then a tab and then two chatacers, one for the left (backward) extension and one for the right (forward) extension */
+    /* Read the kmers from the input file and store them in the working_buffer */
+    total_chars_to_read = nKmers * LINE_SIZE;
+    working_buffer = (unsigned char*) malloc(total_chars_to_read * sizeof(unsigned char));
+    inputFile = fopen(input_UFX_name, "r");
+    cur_chars_read = fread(working_buffer, sizeof(unsigned char),total_chars_to_read , inputFile);
+    fclose(inputFile);
+
+    /* Process the working_buffer and store the k-mers in the hash table */
+    /* Expected format: KMER LR ,i.e. first k characters that represent the kmer, then a tab and then two chatacers, one for the left (backward) extension and one for the right (forward) extension */
+
+    upc_lock_t *pos_lock = upc_all_lock_alloc();
+    //ptr = MYTHREAD * LINE_SIZE;
+    ptr = 0;
+
+    upc_barrier;
+    if(MYTHREAD == 0) {
 
         while ((ptr < cur_chars_read) && (pos < HEAP_SIZE)) {
             /* working_buffer[ptr] is the start of the current k-mer                */
             /* so current left extension is at working_buffer[ptr+KMER_LENGTH+1]    */
             /* and current right extension is at working_buffer[ptr+KMER_LENGTH+2]  */
 
-            left_ext = (char) working_buffer[ptr+KMER_LENGTH+1];
-            right_ext = (char) working_buffer[ptr+KMER_LENGTH+2];
+            left_ext = (char) working_buffer[ptr + KMER_LENGTH + 1];
+            right_ext = (char) working_buffer[ptr + KMER_LENGTH + 2];
 
             /* Add k-mer to hash table */
             //add_kmer(hashtable, &memory_heap, &working_buffer[ptr], left_ext, right_ext);
             add_kmer(buckets, heap, pos, &working_buffer[ptr], left_ext, right_ext);
 
             /*
-             * Check that if we lookup the kmer we find the appropriate result
-             */
+         * Check that if we lookup the kmer we find the appropriate result
+         */
 #ifdef CHECK_TABLE
 
             lookup = lookup_kmer(buckets, heap, &working_buffer[ptr]);
@@ -81,23 +87,23 @@ int main(int argc, char *argv[]){
             //upc_memget_nb(&temp, lookup, sizeof(kmer_t));
 
             char packedKmer[KMER_PACKED_LENGTH];
-            packSequence(&working_buffer[ptr], (unsigned char*) packedKmer, KMER_LENGTH);
+            packSequence(&working_buffer[ptr], (unsigned char *) packedKmer, KMER_LENGTH);
 
             /*
-            printf("Value added to shared hash table: ");
-            for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
-                printf("%c", packedKmer[i]);
-            }
-            printf(" ");
+        printf("Value added to shared hash table: ");
+        for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
+            printf("%c", packedKmer[i]);
+        }
+        printf(" ");
 
-            printf("Value looked up from shared hash table: ");
-            for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
-                printf("%c", temp.kmer[i]);
-            }
-            printf("\n");
-            */
+        printf("Value looked up from shared hash table: ");
+        for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
+            printf("%c", temp.kmer[i]);
+        }
+        printf("\n");
+        */
 
-            for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
+            for (int i = 0; i < KMER_PACKED_LENGTH; ++i) {
                 assert(packedKmer[i] == temp.kmer[i]);
             }
 
@@ -105,22 +111,26 @@ int main(int argc, char *argv[]){
 
             /* Create also a list with the "start" kmers: nodes with F as left (backward) extension */
             if (left_ext == 'F') {
-                starts[n_starts++] = pos;
+                starts[n_starts] = pos;
+                //upc_lock(pos_lock);
+                ++n_starts;
+                //upc_unlock(pos_lock);
                 //addKmerToStartList(&heap, &startKmersList);
             }
 
             /* Move to the next k-mer in the input working_buffer */
+            //ptr += LINE_SIZE * THREADS;
             ptr += LINE_SIZE;
+
+            //pos += THREADS;
             ++pos;
+
         }
-
-        printf("Initialized hash table with %d elements and got %d start positions\n", pos, n_starts);
-
     }
 
     upc_barrier;
-
     inputTime += gettime();
+    printf("Initialized hash table with %d elements and got %d start positions\n", pos, n_starts);
 
     /** Graph construction **/
     constrTime -= gettime();

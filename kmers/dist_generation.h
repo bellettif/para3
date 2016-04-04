@@ -8,8 +8,7 @@
 #include <math.h>
 #include <string.h>
 
-#define HASH_SIZE 4514197
-#define N 8
+#define HASH_SIZE 1048572
 
 #define HEAP_SIZE 16777216
 
