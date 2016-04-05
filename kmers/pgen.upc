@@ -13,10 +13,11 @@
 
 shared kmer_t heap [HEAP_SIZE * THREADS];
 shared bucket_t buckets [HASH_SIZE * THREADS];
-shared int starts [HEAP_SIZE * THREADS];
-shared int pos = 0;
-shared int n_starts = 0;
-shared kmer_t *lookup;
+
+int starts [HASH_SIZE];
+int pos = 0;
+int n_starts = 0;
+kmer_t lookup;
 
 int main(int argc, char *argv[]){
 
@@ -35,7 +36,7 @@ int main(int argc, char *argv[]){
     char cur_contig[MAXIMUM_CONTIG_SIZE], unpackedKmer[KMER_LENGTH+1], left_ext, right_ext, *input_UFX_name;
     int64_t posInContig, contigID = 0, totBases = 0, ptr = 0, nKmers, cur_chars_read, total_chars_to_read;
     unpackedKmer[KMER_LENGTH] = '\0';
-    kmer_t *cur_kmer_ptr;
+    kmer_t cur_kmer;
     start_kmer_t *startKmersList = NULL, *curStartNode;
     unsigned char *working_buffer;
     FILE *inputFile;
@@ -62,59 +63,59 @@ int main(int argc, char *argv[]){
     /** Graph construction **/
     constrTime -= gettime();
 
+    upc_lock_t **locks = malloc(HASH_SIZE*sizeof(upc_lock_t*));
+    for(int i = 0; i < HASH_SIZE; ++i){
+        locks[i] = upc_all_lock_alloc();
+    }
 
-    ///////////////////////////////////////////
-    // Your code for graph construction here //
-    ///////////////////////////////////////////
     /* Process the working_buffer and store the k-mers in the hash table */
     /* Expected format: KMER LR ,i.e. first k characters that represent the kmer, then a tab and then two chatacers, one for the left (backward) extension and one for the right (forward) extension */
-    ptr = 0;
+    ptr = MYTHREAD * LINE_SIZE;
+    pos = MYTHREAD;
 
     upc_barrier;
-    if(MYTHREAD == 0) {
 
-        while ((ptr < cur_chars_read) && (pos < HEAP_SIZE)) {
-            /* working_buffer[ptr] is the start of the current k-mer                */
-            /* so current left extension is at working_buffer[ptr+KMER_LENGTH+1]    */
-            /* and current right extension is at working_buffer[ptr+KMER_LENGTH+2]  */
+    while ((ptr < cur_chars_read) && (pos < HEAP_SIZE)) {
+        /* working_buffer[ptr] is the start of the current k-mer                */
+        /* so current left extension is at working_buffer[ptr+KMER_LENGTH+1]    */
+        /* and current right extension is at working_buffer[ptr+KMER_LENGTH+2]  */
 
-            left_ext = (char) working_buffer[ptr + KMER_LENGTH + 1];
-            right_ext = (char) working_buffer[ptr + KMER_LENGTH + 2];
+        left_ext = (char) working_buffer[ptr + KMER_LENGTH + 1];
+        right_ext = (char) working_buffer[ptr + KMER_LENGTH + 2];
 
-            /* Add k-mer to hash table */
-            //add_kmer(hashtable, &memory_heap, &working_buffer[ptr], left_ext, right_ext);
-            add_kmer(buckets, heap, pos, &working_buffer[ptr], left_ext, right_ext);
+        /* Add k-mer to hash table */
+        //add_kmer(hashtable, &memory_heap, &working_buffer[ptr], left_ext, right_ext);
+        add_kmer(buckets, heap, pos, &working_buffer[ptr], left_ext, right_ext, locks);
 
-            /*
-         * Check that if we lookup the kmer we find the appropriate result
-         */
+        /*
+     * Check that if we lookup the kmer we find the appropriate result
+     */
 #ifdef CHECK_TABLE
 
-            lookup = lookup_kmer(buckets, heap, &working_buffer[ptr]);
-            kmer_t temp = *lookup;
-            //upc_memget_nb(&temp, lookup, sizeof(kmer_t));
+        lookup = lookup_kmer(buckets, heap, &working_buffer[ptr]);
+        kmer_t temp = *lookup;
+        //upc_memget_nb(&temp, lookup, sizeof(kmer_t));
 
-            char packedKmer[KMER_PACKED_LENGTH];
-            packSequence(&working_buffer[ptr], (unsigned char *) packedKmer, KMER_LENGTH);
+        char packedKmer[KMER_PACKED_LENGTH];
+        packSequence(&working_buffer[ptr], (unsigned char *) packedKmer, KMER_LENGTH);
 
-            for (int i = 0; i < KMER_PACKED_LENGTH; ++i) {
-                assert(packedKmer[i] == temp.kmer[i]);
-            }
+        for (int i = 0; i < KMER_PACKED_LENGTH; ++i) {
+            assert(packedKmer[i] == temp.kmer[i]);
+        }
 
 #endif
 
-            /* Create also a list with the "start" kmers: nodes with F as left (backward) extension */
-            if (left_ext == 'F') {
-                starts[n_starts] = pos;
-                ++n_starts;
-            }
-
-            /* Move to the next k-mer in the input working_buffer */
-            ptr += LINE_SIZE;
-
-            ++pos;
-
+        /* Create also a list with the "start" kmers: nodes with F as left (backward) extension */
+        if (left_ext == 'F') {
+            starts[n_starts] = pos;
+            ++n_starts;
         }
+
+        /* Move to the next k-mer in the input working_buffer */
+        ptr += LINE_SIZE * THREADS;
+
+        pos += THREADS;
+
     }
     upc_barrier;
     constrTime += gettime();
@@ -135,35 +136,30 @@ int main(int argc, char *argv[]){
     kmer_t current_start;
     for(int i = n_starts - 1; i >= 0; --i){
 
-        if(i % THREADS == MYTHREAD){
-            current_start = heap[starts[i]];
-            cur_kmer_ptr = &current_start;
-            unpackSequence((unsigned char*) current_start.kmer,  (unsigned char*) unpackedKmer, KMER_LENGTH);
-            //printf("Looking up %c %s %s\n", right_ext, current_start.kmer, unpackedKmer);
+        current_start = heap[starts[i]];
+        cur_kmer = current_start;
+        unpackSequence((unsigned char*) current_start.kmer,  (unsigned char*) unpackedKmer, KMER_LENGTH);
 
-            /* Initialize current contig with the seed content */
-            memcpy(cur_contig ,unpackedKmer, KMER_LENGTH * sizeof(char));
-            posInContig = KMER_LENGTH;
-            right_ext = current_start.r_ext;
+        /* Initialize current contig with the seed content */
+        memcpy(cur_contig ,unpackedKmer, KMER_LENGTH * sizeof(char));
+        posInContig = KMER_LENGTH;
+        right_ext = current_start.r_ext;
 
-            /* Keep adding bases while not finding a terminal node */
-            while (right_ext != 'F') {
-                cur_contig[posInContig] = right_ext;
-                posInContig++;
-                /* At position cur_contig[posInContig-KMER_LENGTH] starts the last k-mer in the current contig */
-                lookup = lookup_kmer(buckets, heap, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
-                //upc_memget_nb(cur_kmer_ptr, lookup, sizeof(kmer_t));
-                *(cur_kmer_ptr) = *lookup;
-                right_ext = cur_kmer_ptr->r_ext;
-            }
-
-            /* Print the contig since we have found the corresponding terminal node */
-            cur_contig[posInContig] = '\0';
-            fprintf(serialOutputFile,"%s\n", cur_contig);
-            contigID++;
-            totBases += strlen(cur_contig);
-
+        /* Keep adding bases while not finding a terminal node */
+        while (right_ext != 'F') {
+            cur_contig[posInContig] = right_ext;
+            posInContig++;
+            /* At position cur_contig[posInContig-KMER_LENGTH] starts the last k-mer in the current contig */
+            lookup = lookup_kmer(buckets, heap, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
+            cur_kmer = lookup;
+            right_ext = cur_kmer.r_ext;
         }
+
+        /* Print the contig since we have found the corresponding terminal node */
+        cur_contig[posInContig] = '\0';
+        fprintf(serialOutputFile,"%s\n", cur_contig);
+        contigID++;
+        totBases += strlen(cur_contig);
 
     }
 
