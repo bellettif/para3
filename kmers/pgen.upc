@@ -49,6 +49,8 @@ int main(int argc, char *argv[]){
 
     nKmers = getNumKmersInUFX(input_UFX_name);
 
+    assert(nKmers < HEAP_SIZE * THREADS);
+
     /* Read the kmers from the input file and store them in the working_buffer */
     total_chars_to_read = nKmers * LINE_SIZE;
     working_buffer = (unsigned char*) malloc(total_chars_to_read * sizeof(unsigned char));
@@ -76,7 +78,7 @@ int main(int argc, char *argv[]){
 
     upc_barrier;
 
-    while ((ptr < cur_chars_read) && (pos < HEAP_SIZE)) {
+    while ((ptr < cur_chars_read) && (pos < HEAP_SIZE * THREADS)) {
         /* working_buffer[ptr] is the start of the current k-mer                */
         /* so current left extension is at working_buffer[ptr+KMER_LENGTH+1]    */
         /* and current right extension is at working_buffer[ptr+KMER_LENGTH+2]  */

@@ -16,10 +16,6 @@
 #define MAXIMUM_CONTIG_SIZE 100000
 #endif
 
-#ifndef KMER_LENGTH
-#define KMER_LENGTH 19
-#endif
-
 #ifndef LOAD_FACTOR
 #define LOAD_FACTOR 1
 #endif
