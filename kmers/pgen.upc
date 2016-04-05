@@ -12,7 +12,7 @@
 //#define CHECK_TABLE
 
 shared kmer_t heap [HEAP_SIZE * THREADS];
-shared bucket_t buckets [HASH_SIZE * THREADS];
+shared bucket_t buckets [THREADS * HASH_SIZE];
 
 int starts [HASH_SIZE];
 int pos = 0;
@@ -63,8 +63,9 @@ int main(int argc, char *argv[]){
     /** Graph construction **/
     constrTime -= gettime();
 
-    upc_lock_t **locks = malloc(HASH_SIZE * THREADS *sizeof(upc_lock_t*));
-    for(int i = 0; i < HASH_SIZE * THREADS; ++i){
+    upc_lock_t **locks = malloc(HASH_SIZE *sizeof(upc_lock_t*));
+    int i;
+    for(i = 0; i < HASH_SIZE; ++i){
         locks[i] = upc_all_lock_alloc();
     }
 

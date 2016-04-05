@@ -19,7 +19,7 @@ int64_t hashseq(char *seq, int size)
       hashval = seq[i] +  (hashval << 5) + hashval;
    }
 
-   return hashval % (HASH_SIZE * THREADS);
+   return hashval % (HASH_SIZE);
 }
 
 /* Returns the hash value of a kmer */
@@ -29,7 +29,7 @@ int64_t hashkmer(char *seq)
 }
 
 /* Looks up a kmer in the hash table and returns a pointer to that entry */
-kmer_t lookup_kmer(shared bucket_t *buckets, shared kmer_t *heap,
+kmer_t lookup_kmer(shared [1] bucket_t *buckets, shared kmer_t *heap,
                    const unsigned char *kmer)
 {
 
