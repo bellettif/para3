@@ -55,11 +55,19 @@ int main(int argc, char *argv[]){
     cur_chars_read = fread(working_buffer, sizeof(unsigned char),total_chars_to_read , inputFile);
     fclose(inputFile);
 
+    upc_barrier;
+    inputTime += gettime();
+
+
+    /** Graph construction **/
+    constrTime -= gettime();
+
+
+    ///////////////////////////////////////////
+    // Your code for graph construction here //
+    ///////////////////////////////////////////
     /* Process the working_buffer and store the k-mers in the hash table */
     /* Expected format: KMER LR ,i.e. first k characters that represent the kmer, then a tab and then two chatacers, one for the left (backward) extension and one for the right (forward) extension */
-
-    upc_lock_t *pos_lock = upc_all_lock_alloc();
-    //ptr = MYTHREAD * LINE_SIZE;
     ptr = 0;
 
     upc_barrier;
@@ -89,20 +97,6 @@ int main(int argc, char *argv[]){
             char packedKmer[KMER_PACKED_LENGTH];
             packSequence(&working_buffer[ptr], (unsigned char *) packedKmer, KMER_LENGTH);
 
-            /*
-        printf("Value added to shared hash table: ");
-        for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
-            printf("%c", packedKmer[i]);
-        }
-        printf(" ");
-
-        printf("Value looked up from shared hash table: ");
-        for(int i = 0; i < KMER_PACKED_LENGTH; ++i){
-            printf("%c", temp.kmer[i]);
-        }
-        printf("\n");
-        */
-
             for (int i = 0; i < KMER_PACKED_LENGTH; ++i) {
                 assert(packedKmer[i] == temp.kmer[i]);
             }
@@ -112,32 +106,27 @@ int main(int argc, char *argv[]){
             /* Create also a list with the "start" kmers: nodes with F as left (backward) extension */
             if (left_ext == 'F') {
                 starts[n_starts] = pos;
-                //upc_lock(pos_lock);
                 ++n_starts;
-                //upc_unlock(pos_lock);
-                //addKmerToStartList(&heap, &startKmersList);
             }
 
             /* Move to the next k-mer in the input working_buffer */
-            //ptr += LINE_SIZE * THREADS;
             ptr += LINE_SIZE;
 
-            //pos += THREADS;
             ++pos;
 
         }
     }
-
     upc_barrier;
-    inputTime += gettime();
+    constrTime += gettime();
+
     printf("Initialized hash table with %d elements and got %d start positions\n", pos, n_starts);
 
-    /** Graph construction **/
-    constrTime -= gettime();
-    ///////////////////////////////////////////
-    // Your code for graph construction here //
-    ///////////////////////////////////////////
-
+    /** Graph traversal **/
+    traversalTime -= gettime();
+    ////////////////////////////////////////////////////////////
+    // Your code for graph traversal and output printing here //
+    // Save your output to "pgen.out"                         //
+    ////////////////////////////////////////////////////////////
     char filename[80];
     FILE *serialOutputFile;
     sprintf(filename, "pgen_%d.out", MYTHREAD);
@@ -178,15 +167,6 @@ int main(int argc, char *argv[]){
 
     }
 
-    upc_barrier;
-    constrTime += gettime();
-
-    /** Graph traversal **/
-    traversalTime -= gettime();
-    ////////////////////////////////////////////////////////////
-    // Your code for graph traversal and output printing here //
-    // Save your output to "pgen.out"                         //
-    ////////////////////////////////////////////////////////////
     upc_barrier;
     traversalTime += gettime();
 
