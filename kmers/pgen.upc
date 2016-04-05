@@ -9,7 +9,7 @@
 #include "packingDNAseq.h"
 #include "kmer_hash_dist.h"
 
-#define CHECK_TABLE
+//#define CHECK_TABLE
 
 shared kmer_t heap [HEAP_SIZE * THREADS];
 shared bucket_t buckets [HASH_SIZE * THREADS];
@@ -63,8 +63,8 @@ int main(int argc, char *argv[]){
     /** Graph construction **/
     constrTime -= gettime();
 
-    upc_lock_t **locks = malloc(HASH_SIZE*sizeof(upc_lock_t*));
-    for(int i = 0; i < HASH_SIZE; ++i){
+    upc_lock_t **locks = malloc(HASH_SIZE * THREADS *sizeof(upc_lock_t*));
+    for(int i = 0; i < HASH_SIZE * THREADS; ++i){
         locks[i] = upc_all_lock_alloc();
     }
 
@@ -93,8 +93,7 @@ int main(int argc, char *argv[]){
 #ifdef CHECK_TABLE
 
         lookup = lookup_kmer(buckets, heap, &working_buffer[ptr]);
-        kmer_t temp = *lookup;
-        //upc_memget_nb(&temp, lookup, sizeof(kmer_t));
+        kmer_t temp = lookup;
 
         char packedKmer[KMER_PACKED_LENGTH];
         packSequence(&working_buffer[ptr], (unsigned char *) packedKmer, KMER_LENGTH);
@@ -151,6 +150,11 @@ int main(int argc, char *argv[]){
             posInContig++;
             /* At position cur_contig[posInContig-KMER_LENGTH] starts the last k-mer in the current contig */
             lookup = lookup_kmer(buckets, heap, (const unsigned char *) &cur_contig[posInContig-KMER_LENGTH]);
+
+            if(lookup.next == -1){
+                exit(2);
+            }
+
             cur_kmer = lookup;
             right_ext = cur_kmer.r_ext;
         }

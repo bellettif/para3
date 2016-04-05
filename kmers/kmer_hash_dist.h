@@ -37,26 +37,32 @@ kmer_t lookup_kmer(shared bucket_t *buckets, shared kmer_t *heap,
    packSequence(kmer, (unsigned char*) packedKmer, KMER_LENGTH);
    int64_t hashval = hashkmer((char*) packedKmer);
    bucket_t cur_bucket;
-   shared kmer_t *result;
+   kmer_t result;
 
    cur_bucket = buckets[hashval];
    result = heap[cur_bucket.head];
 
-   for (; result!=NULL; ) {
+   int timeout = 0;
+   while(timeout < 1e9){
 
       if ( memcmp(packedKmer, result.kmer, KMER_PACKED_LENGTH * sizeof(char)) == 0 ) {
          return result;
       }
-      result = heap[result->next];
+      result = heap[result.next];
+      ++timeout;
 
    }
+
+   printf("Lookup cannot be found\n");
+   result.next = -1;
    return result;
+
 }
 
 /* Adds a kmer and its extensions in the hash table (note that a memory heap should be preallocated. ) */
 int add_kmer(shared bucket_t *buckets, shared kmer_t *heap,
              int pos, const unsigned char *kmer,
-             char left_ext, char right_ext, , upc_lock_t ** locks)
+             char left_ext, char right_ext, upc_lock_t ** locks)
 {
    /* Pack a k-mer sequence appropriately */
    char packedKmer[KMER_PACKED_LENGTH];
